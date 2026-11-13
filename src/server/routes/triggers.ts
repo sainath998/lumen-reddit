@@ -6,7 +6,7 @@ import { ensureDailyPost } from '../core/post';
 export const triggers = new Hono();
 export const scheduler = new Hono();
 
-// Installing the app posts today's puzzle right away.
+// Installing or upgrading the app makes sure today's puzzle is posted.
 triggers.post('/on-app-install', async (c) => {
   await c.req.json<OnAppInstallRequest>().catch(() => null);
   try {

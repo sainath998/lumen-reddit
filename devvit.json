@@ -26,7 +26,8 @@
     }
   },
   "triggers": {
-    "onAppInstall": "/internal/triggers/on-app-install"
+    "onAppInstall": "/internal/triggers/on-app-install",
+    "onAppUpgrade": "/internal/triggers/on-app-install"
   },
   "scheduler": {
     "tasks": {
