@@ -79,7 +79,7 @@ export async function state(): Promise<StateResponse> {
   const mine = s.solves[day]?.count ?? null;
   const next = new Date();
   next.setUTCHours(24, 0, 0, 0);
-  return { type: 'state', puzzle, isToday: day === todayId(), me: me(s, day), stats: stats(puzzle.par, mine), nextPuzzleAt: next.getTime(), subreddit: 'LumenDaily' };
+  return { type: 'state', puzzle, isToday: day === todayId(), me: me(s, day), stats: stats(puzzle.par, mine), nextPuzzleAt: next.getTime(), subreddit: 'lumen_mirrors_dev' };
 }
 
 export async function solve(body: SolveRequest): Promise<SolveResponse> {
