@@ -1,4 +1,6 @@
 import type {
+  CreateRequest,
+  CreateResponse,
   LeaderboardResponse,
   ShareResponse,
   SolveRequest,
@@ -26,6 +28,8 @@ export const api = {
     LOCAL ? mock.solve(body) : getJson('/api/solve', { method: 'POST', body: JSON.stringify(body) }),
   share: (): Promise<ShareResponse> => (LOCAL ? mock.share() : getJson('/api/share', { method: 'POST', body: '{}' })),
   leaderboard: (): Promise<LeaderboardResponse> => (LOCAL ? mock.leaderboard() : getJson('/api/leaderboard')),
+  create: (body: CreateRequest): Promise<CreateResponse> =>
+    LOCAL ? mock.create(body) : getJson('/api/create', { method: 'POST', body: JSON.stringify(body) }),
 };
 
 export const isLocal = LOCAL;

@@ -28,6 +28,7 @@ export type StateResponse = {
   type: 'state';
   puzzle: Puzzle;
   isToday: boolean;
+  author?: string; // community puzzles
   me: Me;
   stats: Stats;
   nextPuzzleAt: number; // ms epoch of next UTC midnight
@@ -47,3 +48,6 @@ export type ShareResponse = { type: 'share'; ok: boolean; message?: string; comm
 
 export type LeaderRow = { username: string; taps: number; ms: number };
 export type LeaderboardResponse = { type: 'leaderboard'; rows: LeaderRow[] };
+
+export type CreateRequest = { size: number; design: string };
+export type CreateResponse = { type: 'create'; ok: boolean; message?: string; url?: string; par?: number };

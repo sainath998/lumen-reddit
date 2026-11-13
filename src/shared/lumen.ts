@@ -399,3 +399,69 @@ export function shareText(p: Puzzle, taps: number, streak: number): string {
   const label = diff <= 0 ? (diff < 0 ? 'under par!' : 'on par') : `par +${diff}`;
   return `Lumen #${p.number} ${stars} ${taps} taps (${label})${streak > 1 ? ` · 🔥${streak}` : ''}`;
 }
+
+// ---------------------------------------------------------------------------
+// Community puzzles: a player designs a board in its *solved* state; the
+// server scrambles the mirrors deterministically and computes par.
+
+const CODE: Record<string, Cell> = {
+  '.': { t: 'empty' },
+  '#': { t: 'wall' },
+  '/': { t: 'mirror', s: '/', locked: false },
+  '\\': { t: 'mirror', s: '\\', locked: false },
+  o: { t: 'crystal', c: 'white' },
+  '^': { t: 'emitter', d: 0, c: 'white' },
+  '>': { t: 'emitter', d: 1, c: 'white' },
+  v: { t: 'emitter', d: 2, c: 'white' },
+  '<': { t: 'emitter', d: 3, c: 'white' },
+};
+
+export function encodeCells(cells: Cell[]): string {
+  return cells
+    .map((c) => {
+      if (c.t === 'wall') return '#';
+      if (c.t === 'mirror') return c.s;
+      if (c.t === 'crystal') return 'o';
+      if (c.t === 'emitter') return '^>v<'[c.d]!;
+      return '.';
+    })
+    .join('');
+}
+
+export function decodeCells(s: string): Cell[] | null {
+  const out: Cell[] = [];
+  for (const ch of s) {
+    const c = CODE[ch];
+    if (!c) return null;
+    out.push({ ...c });
+  }
+  return out;
+}
+
+export type CustomCheck = { ok: true; puzzle: Puzzle } | { ok: false; reason: string };
+
+/** Validate a designed (solved) board and turn it into a playable puzzle. */
+export function buildCustom(size: number, design: string, seed: string, number = 0): CustomCheck {
+  if (![5, 6, 7].includes(size)) return { ok: false, reason: 'Board must be 5×5, 6×6 or 7×7' };
+  const cells = decodeCells(design);
+  if (!cells || cells.length !== size * size) return { ok: false, reason: 'Board data is malformed' };
+  const emitters = cells.filter((c) => c.t === 'emitter').length;
+  const crystals = cells.filter((c) => c.t === 'crystal').length;
+  const mirrors = cells.filter((c) => c.t === 'mirror').length;
+  if (emitters < 1 || emitters > 2) return { ok: false, reason: 'Place one or two light sources' };
+  if (crystals < 2) return { ok: false, reason: 'Place at least two crystals' };
+  if (mirrors < 2) return { ok: false, reason: 'Place at least two mirrors' };
+  if (mirrors > 14) return { ok: false, reason: 'Use at most 14 mirrors' };
+  if (!trace(size, cells).solved) return { ok: false, reason: 'Every crystal must be lit in your design' };
+  const r = rng(hashString(`custom:${seed}`));
+  const movable = cells.map((c, i) => (c.t === 'mirror' ? i : -1)).filter((i) => i >= 0);
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const start = cells.map((c) => ({ ...c })) as Cell[];
+    for (const i of movable) if (r() < 0.55) (start[i] as { s: Slant }).s = (start[i] as { s: Slant }).s === '/' ? '\\' : '/';
+    if (trace(size, start).solved) continue;
+    const par = minTaps(size, start);
+    if (par === null || par < 2) continue;
+    return { ok: true, puzzle: { id: `custom-${seed}`, number, size, cells: start, par, difficulty: par >= 6 ? 'hard' : par >= 4 ? 'medium' : 'easy' } };
+  }
+  return { ok: false, reason: 'Too easy: add mirrors so it takes at least two flips' };
+}

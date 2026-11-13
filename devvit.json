@@ -12,7 +12,7 @@
   "permissions": {
     "redis": true,
     "journeys": true,
-    "reddit": { "enable": true, "asUser": ["SUBMIT_COMMENT"] }
+    "reddit": { "enable": true, "scope": "user" }
   },
   "triggers": { "onAppInstall": "/internal/triggers/on-app-install" },
   "scheduler": {

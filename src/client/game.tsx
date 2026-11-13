@@ -3,6 +3,7 @@ import './index.css';
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Board } from './Board';
+import { Create } from './Create';
 import { api, isLocal } from './api';
 import { applyTaps, shareText, trace, type Cell, type Puzzle } from '../shared/lumen';
 import type { LeaderRow, Me, StateResponse, Stats } from '../shared/api';
@@ -58,6 +59,7 @@ export const App = () => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const [hint, setHint] = useState(!seenHint());
   const startedAt = useRef<number | null>(null);
   const submitted = useRef(false);
@@ -149,11 +151,11 @@ export const App = () => {
     <div className="screen">
       <header className="hud">
         <div>
-          <div className="title">LUMEN <span>#{puzzle.number}</span></div>
+          <div className="title">LUMEN <span>{data.author ? 'by u/' + data.author : '#' + puzzle.number}</span></div>
           <div className="sub">
             {new Date(puzzle.id + 'T00:00:00Z').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' })}
             <span className={`pill ${puzzle.difficulty}`}>{DIFF_LABEL[puzzle.difficulty]}</span>
-            {!data.isToday && <span className="pill archive">Archive</span>}
+            {!data.isToday && <span className="pill archive">{data.author ? 'Community' : 'Archive'}</span>}
           </div>
         </div>
         <div className="score" aria-live="polite">
@@ -183,10 +185,14 @@ export const App = () => {
           {stats ? `${stats.solvers.toLocaleString()} solved today` : ''}
           {me && me.streak > 0 ? ` · 🔥 ${me.streak}` : ''}
         </span>
-        {solved && <button className="ghost" onClick={() => setShowResult(true)}>Results</button>}
+        <span className="bar-right">
+          <button className="ghost" onClick={() => setShowCreate(true)}>Make one</button>
+          {solved && <button className="ghost" onClick={() => setShowResult(true)}>Results</button>}
+        </span>
       </footer>
 
       {showHelp && <Help onClose={() => setShowHelp(false)} />}
+      {showCreate && <Create onClose={() => setShowCreate(false)} />}
       {showResult && me && stats && (
         <Result puzzle={puzzle} me={me} stats={stats} nextAt={data.nextPuzzleAt} isToday={data.isToday} onClose={() => setShowResult(false)} onShared={(m) => setMe(m)} />
       )}

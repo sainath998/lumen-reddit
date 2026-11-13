@@ -19,9 +19,10 @@ type Props = {
   hintCell?: number | null;
   solved?: boolean;
   compact?: boolean; // splash preview: no interaction, lighter effects
+  onCell?: (i: number) => void; // editor: every cell is tappable
 };
 
-export function Board({ size, cells, beam, turns, onTap, hintCell, solved, compact }: Props) {
+export function Board({ size, cells, beam, turns, onTap, hintCell, solved, compact, onCell }: Props) {
   const vb = size * U;
   const segs = useMemo(
     () =>
@@ -127,6 +128,23 @@ export function Board({ size, cells, beam, turns, onTap, hintCell, solved, compa
         }
         return null;
       })}
+
+      {onCell &&
+        cells.map((_, i) => (
+          <rect
+            key={`e${i}`}
+            x={(i % size) * U}
+            y={Math.floor(i / size) * U}
+            width={U}
+            height={U}
+            fill="transparent"
+            className="tap"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              onCell(i);
+            }}
+          />
+        ))}
     </svg>
   );
 }

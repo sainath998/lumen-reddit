@@ -3,6 +3,8 @@
 // server replays them on the day's puzzle.
 import { redis } from '@devvit/web/server';
 import { generate, todayId, verify, type Puzzle } from '../../shared/lumen';
+
+export type Board = { key: string; puzzle: Puzzle; isToday: boolean; author?: string };
 import type { Me, MyResult, Stats } from '../../shared/api';
 
 const k = {
@@ -29,6 +31,20 @@ export function dayFromPostData(postData: unknown): string {
     if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
   }
   return todayId();
+}
+
+/** Which puzzle a post shows: the daily puzzle for its date, or a community puzzle. */
+export async function resolveBoard(postData: unknown): Promise<Board> {
+  if (postData && typeof postData === 'object' && 'kind' in postData && (postData as { kind: unknown }).kind === 'custom') {
+    const id = String((postData as { id?: unknown }).id ?? '');
+    const raw = id ? await redis.get(`custom:${id}`) : undefined;
+    if (raw) {
+      const saved = JSON.parse(raw) as { puzzle: Puzzle; author: string };
+      return { key: `c-${id}`, puzzle: saved.puzzle, isToday: false, author: saved.author };
+    }
+  }
+  const day = dayFromPostData(postData);
+  return { key: day, puzzle: puzzleFor(day), isToday: day === todayId() };
 }
 
 function yesterdayOf(day: string): string {
@@ -69,12 +85,12 @@ export async function getStats(day: string, mine: number | null): Promise<Stats>
 export type SolveOutcome = { ok: boolean; message?: string; result?: MyResult };
 
 /** Verify and record a solve. Only the first solve per user per day counts. */
-export async function recordSolve(userId: string, username: string, day: string, taps: number[], ms: number): Promise<SolveOutcome> {
+export async function recordSolve(userId: string, username: string, board: Board, taps: number[], ms: number): Promise<SolveOutcome> {
+  const day = board.key;
   if (!Array.isArray(taps) || taps.length > 400 || !taps.every((t) => Number.isInteger(t) && t >= 0 && t < 400)) {
     return { ok: false, message: 'Invalid move list' };
   }
-  const puzzle = puzzleFor(day);
-  const v = verify(puzzle, taps);
+  const v = verify(board.puzzle, taps);
   if (!v.solved) return { ok: false, message: 'That board is not solved yet' };
 
   const result: MyResult = { solved: true, taps: v.taps, ms: Math.max(0, Math.min(Math.round(ms), 86_400_000)), shared: false, tapList: taps };
@@ -91,8 +107,8 @@ export async function recordSolve(userId: string, username: string, day: string,
     redis.hIncrBy(k.user(userId), 'total', 1),
   ]);
 
-  // Streaks count today's puzzle only (archive posts are just for fun).
-  if (day === todayId()) {
+  // Streaks count today's daily puzzle only (archive and community posts are just for fun).
+  if (board.isToday) {
     const u = await redis.hGetAll(k.user(userId));
     const streak = u.last === yesterdayOf(day) ? Number(u.streak ?? 0) + 1 : u.last === day ? Number(u.streak ?? 1) : 1;
     await redis.hSet(k.user(userId), { streak: String(streak), best: String(Math.max(streak, Number(u.best ?? 0))), last: day, name: username });

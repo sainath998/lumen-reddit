@@ -51,3 +51,29 @@ test('verify replays taps and ignores locked / non-mirror cells', () => {
   assert.equal(verify(p, [...solution!, solution![0]!, solution![0]!]).solved, true, 'double tap returns mirror');
   assert.equal(verify(p, []).solved, false);
 });
+
+import { buildCustom, encodeCells, decodeCells } from './lumen.ts';
+
+test('community puzzles: validation, scramble and round trip', () => {
+  // 5x5: emitter at left of row 2 shooting right, a "\" at (2,2) sends it down to a crystal,
+  // and a "/" at (2,4)... keep it simple: a straight design with two mirrors.
+  const design =
+    '.....' +
+    '>.\\..' +
+    '..o..' +
+    '..\\o.' +
+    '.....';
+  // trace: > at (0,1) right -> (2,1) "\" turns down -> (2,2) crystal -> (2,3) "\" turns right -> (3,3) crystal -> exits
+  const ok = buildCustom(5, design, 'abc');
+  assert.equal(ok.ok, true, JSON.stringify(ok));
+  if (ok.ok) {
+    assert.equal(trace(5, ok.puzzle.cells).solved, false);
+    assert.ok(ok.puzzle.par >= 2);
+    assert.equal(minTaps(5, ok.puzzle.cells), ok.puzzle.par);
+  }
+  assert.deepEqual(encodeCells(decodeCells(design)!), design);
+  assert.equal(buildCustom(5, design.replace('o', '.').replace('o', '.'), 'x').ok, false, 'needs crystals');
+  assert.equal(buildCustom(5, '.'.repeat(25), 'x').ok, false);
+  assert.equal(buildCustom(5, design.replace('\\o', '.o'), 'x').ok, false, 'unsolved design rejected');
+  assert.equal(buildCustom(9, design, 'x').ok, false);
+});

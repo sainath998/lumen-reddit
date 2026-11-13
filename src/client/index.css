@@ -133,3 +133,17 @@ button { font: inherit; cursor: pointer; }
   .splash .tagline { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* editor */
+.bar-right { display: flex; gap: 6px; }
+.create { gap: 8px; }
+.create-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.sizes, .tools { display: flex; gap: 6px; flex-wrap: wrap; }
+.sizes button, .tools button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.sizes button.on, .tools button.on { border-color: var(--accent); color: var(--accent); background: rgba(255, 201, 74, 0.1); }
+.tools .lg { width: 16px; height: 16px; }
+.lg.light { border-radius: 50%; background: #fff6d6; box-shadow: 0 0 8px #fff6d6; }
+.lg.erase { border: 2px solid var(--muted); border-radius: 4px; }
+.create .board { width: 100%; max-height: 52vh; }
+.ready { color: var(--good); }
+.notice { color: var(--accent); }

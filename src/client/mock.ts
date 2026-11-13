@@ -3,6 +3,8 @@
 // results in localStorage. A few simulated community results make the stats
 // and leaderboard look like they would with other players.
 import type {
+  CreateRequest,
+  CreateResponse,
   LeaderboardResponse,
   Me,
   ShareResponse,
@@ -11,7 +13,7 @@ import type {
   StateResponse,
   Stats,
 } from '../shared/api';
-import { generate, todayId, verify } from '../shared/lumen';
+import { buildCustom, generate, todayId, verify } from '../shared/lumen';
 
 const KEY = 'lumen.local.v1';
 type Store = { solves: Record<string, { taps: number[]; count: number; ms: number; shared: boolean }>; streak: number; best: number; last: string | null };
@@ -124,4 +126,11 @@ export async function leaderboard(): Promise<LeaderboardResponse> {
       { username: 'halcyonhex', taps: p.par + 1, ms: 66_000 },
     ],
   };
+}
+
+export async function create(body: CreateRequest): Promise<CreateResponse> {
+  await wait(250);
+  const built = buildCustom(body.size, body.design, String(Date.now()), 1);
+  if (!built.ok) return { type: 'create', ok: false, message: built.reason };
+  return { type: 'create', ok: true, par: built.puzzle.par };
 }
