@@ -2,7 +2,7 @@ import { EntrypointHeight, reddit, redis } from '@devvit/web/server';
 import { todayId } from '../../shared/lumen';
 import { puzzleFor } from './game';
 
-const POSTS = 'posts'; // hash day -> postId
+const POSTS = 'daily-posts'; // hash day -> postId
 
 const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const LABEL = { gentle: 'Gentle', easy: 'Easy', medium: 'Medium', tricky: 'Tricky', hard: 'Hard' } as const;

@@ -142,7 +142,7 @@ export function rng(seed: number): () => number {
 // ---------------------------------------------------------------------------
 // Daily schedule
 
-export const EPOCH = '2026-11-15'; // Lumen #1
+export const EPOCH = '2026-11-13'; // Lumen #1
 
 export function dayNumber(dateId: string): number {
   const a = Date.UTC(+EPOCH.slice(0, 4), +EPOCH.slice(5, 7) - 1, +EPOCH.slice(8, 10));

@@ -13,8 +13,8 @@ test('reflect is an involution per slant and turns 90 degrees', () => {
 });
 
 test('dayNumber and weekly difficulty', () => {
-  assert.equal(dayNumber('2026-11-15'), 1);
-  assert.equal(dayNumber('2026-11-16'), 2);
+  assert.equal(dayNumber('2026-11-13'), 1);
+  assert.equal(dayNumber('2026-11-14'), 2);
   assert.equal(difficultyFor('2026-11-16'), 'gentle'); // Monday
   assert.equal(difficultyFor('2026-11-15'), 'hard'); // Sunday
 });
