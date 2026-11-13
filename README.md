@@ -45,4 +45,4 @@ Lumen stores your Reddit user id with your result for each puzzle (tap count and
 Reddit's Game of the Day Hackathon (2026). Code written during the hackathon.
 
 ## License
-MIT
+BSD-3-Clause (inherited from the Devvit Web template this project started from).
