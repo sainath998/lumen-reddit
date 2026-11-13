@@ -1,10 +1,13 @@
 # Lumen: a daily light puzzle for Reddit
 
+**Play it:** [r/lumen_mirrors_dev](https://www.reddit.com/r/lumen_mirrors_dev/) · **App:** [developers.reddit.com/apps/lumen-mirrors](https://developers.reddit.com/apps/lumen-mirrors)
+
 Every day there's a new Lumen board. A beam of light starts at a lamp. Tap mirrors to flip them, bend the light, and light up every crystal in as few taps as you can. Each board has a **par**, the fewest taps that solve it, so you can always tell how well you did.
 
 - **New puzzle every day at 00:00 UTC.** Difficulty follows the week: gentle on Monday, hard on Sunday.
 - **Later in the week, the light gets coloured.** Filters recolour the beam, and crystals only light for a beam of their own colour. Some days have two lamps.
 - **Everyone gets the same board.** After solving, you see how the community did: a chart of tap counts, the share of players you beat, a leaderboard, and your streak.
+- **Stuck? Tap 💡 Hint** and the next mirror to flip glows. Hinted solves still count for your streak but stay off the leaderboard.
 - **Share your result in the comments** with one tap, as a spoiler-free line like `Lumen #12 🌟🌟🌟 4 taps (on par) · 🔥5`.
 - **Make your own puzzle.** Design a solved board in the editor and Lumen checks it, scrambles the mirrors, works out par, and posts it as a new "Community Lumen" for the subreddit to play.
 
@@ -34,6 +37,12 @@ Lumen stores your Reddit user id with your result for each puzzle (tap count and
   - Puzzles are generated from the date with a seeded random number generator.
   - Every daily board is checked to start unsolved.
   - Par is found by trying every mirror configuration, which proves the puzzle is solvable in exactly par taps.
-- Tests: `npm run test:unit`. They generate 60 days of puzzles and check each one is deterministic, starts unsolved and is solvable in exactly par. They also check move verification and validation of community puzzles.
+- Tests: `npm run test:unit`. They generate 60 days of puzzles and check each one is deterministic, starts unsolved and is solvable in exactly par. They also check move verification, that following hints always solves the board in par, and validation of community puzzles.
 - Offline preview with a mocked backend: `npm run preview:local`, then open `/game.html` (add `?day=YYYY-MM-DD` to load another day's puzzle).
 - Development: `npm run dev` (Devvit playtest). Release: `npm run deploy`.
+
+## Built for
+Reddit's Game of the Day Hackathon (2026). Code written during the hackathon.
+
+## License
+MIT
