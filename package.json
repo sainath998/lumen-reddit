@@ -27,7 +27,7 @@
     "@fontsource/space-grotesk": "^5.2.10",
     "@hono/node-server": "2.1.6",
     "devvit": "0.15.3",
-    "hono": "4.13.17",
+    "hono": "4.13.18",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
