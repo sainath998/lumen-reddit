@@ -6,6 +6,7 @@ export type MyResult = {
   ms: number;
   shared: boolean;
   tapList: number[]; // to restore the solved board
+  hints?: number; // hints used; hinted solves stay off the leaderboard
 };
 
 export type Stats = {
@@ -32,9 +33,10 @@ export type StateResponse = {
   me: Me;
   stats: Stats;
   nextPuzzleAt: number; // ms epoch of next UTC midnight
+  subreddit?: string;
 };
 
-export type SolveRequest = { taps: number[]; ms: number };
+export type SolveRequest = { taps: number[]; ms: number; hints?: number };
 
 export type SolveResponse = {
   type: 'solve';
@@ -51,3 +53,5 @@ export type LeaderboardResponse = { type: 'leaderboard'; rows: LeaderRow[] };
 
 export type CreateRequest = { size: number; design: string };
 export type CreateResponse = { type: 'create'; ok: boolean; message?: string; url?: string; par?: number };
+
+export type JoinResponse = { type: 'join'; ok: boolean };

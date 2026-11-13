@@ -85,7 +85,7 @@ export async function getStats(day: string, mine: number | null): Promise<Stats>
 export type SolveOutcome = { ok: boolean; message?: string; result?: MyResult };
 
 /** Verify and record a solve. Only the first solve per user per day counts. */
-export async function recordSolve(userId: string, username: string, board: Board, taps: number[], ms: number): Promise<SolveOutcome> {
+export async function recordSolve(userId: string, username: string, board: Board, taps: number[], ms: number, hints = 0): Promise<SolveOutcome> {
   const day = board.key;
   if (!Array.isArray(taps) || taps.length > 400 || !taps.every((t) => Number.isInteger(t) && t >= 0 && t < 400)) {
     return { ok: false, message: 'Invalid move list' };
@@ -93,7 +93,7 @@ export async function recordSolve(userId: string, username: string, board: Board
   const v = verify(board.puzzle, taps);
   if (!v.solved) return { ok: false, message: 'That board is not solved yet' };
 
-  const result: MyResult = { solved: true, taps: v.taps, ms: Math.max(0, Math.min(Math.round(ms), 86_400_000)), shared: false, tapList: taps };
+  const result: MyResult = { solved: true, taps: v.taps, ms: Math.max(0, Math.min(Math.round(ms), 86_400_000)), shared: false, tapList: taps, ...(hints > 0 ? { hints: Math.min(99, Math.floor(hints)) } : {}) };
   // hSetNX makes the first solve stick even if two requests race.
   const fresh = await redis.hSetNX(k.solve(day), userId, JSON.stringify(result));
   if (!fresh) {
@@ -103,7 +103,8 @@ export async function recordSolve(userId: string, username: string, board: Board
 
   await Promise.all([
     redis.hIncrBy(k.dist(day), String(v.taps), 1),
-    redis.zAdd(k.board(day), { member: username, score: v.taps * 1e7 + Math.min(result.ms, 9_999_999) }),
+    // Hinted solves still count for stats and streaks, but not for the leaderboard.
+    result.hints ? Promise.resolve() : redis.zAdd(k.board(day), { member: username, score: v.taps * 1e7 + Math.min(result.ms, 9_999_999) }),
     redis.hIncrBy(k.user(userId), 'total', 1),
   ]);
 

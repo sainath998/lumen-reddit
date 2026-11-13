@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { context, reddit, redis } from '@devvit/web/server';
-import type { CreateRequest, CreateResponse, LeaderboardResponse, ShareResponse, SolveRequest, SolveResponse, StateResponse } from '../../shared/api';
+import type { CreateRequest, CreateResponse, JoinResponse, LeaderboardResponse, ShareResponse, SolveRequest, SolveResponse, StateResponse } from '../../shared/api';
 import { buildCustom, shareText, todayId } from '../../shared/lumen';
 import { getMe, getStats, leaderboard, markShared, recordSolve, resolveBoard } from '../core/game';
 
@@ -24,6 +24,7 @@ api.get('/state', async (c) => {
     me,
     stats,
     nextPuzzleAt: nextMidnight(),
+    ...(context.subredditName ? { subreddit: context.subredditName } : {}),
   });
 });
 
@@ -37,7 +38,8 @@ api.post('/solve', async (c) => {
     const stats = await getStats(board.key, null);
     return c.json<SolveResponse>({ type: 'solve', ok: true, message: 'Log in to keep your streak', me: await getMe(undefined, undefined, board.key), stats });
   }
-  const out = await recordSolve(userId, username, board, body.taps, body.ms);
+  const hints = typeof body.hints === 'number' && body.hints > 0 ? body.hints : 0;
+  const out = await recordSolve(userId, username, board, body.taps, body.ms, hints);
   const me = await getMe(userId, username, board.key);
   const stats = await getStats(board.key, me.today?.taps ?? null);
   return c.json<SolveResponse>({ type: 'solve', ok: out.ok, ...(out.message ? { message: out.message } : {}), me, stats });
@@ -51,7 +53,7 @@ api.post('/share', async (c) => {
   if (!before) return c.json<ShareResponse>({ type: 'share', ok: false, message: 'Solve the puzzle first' });
   if (before.shared) return c.json<ShareResponse>({ type: 'share', ok: true, message: 'Already shared' });
   const me = await getMe(userId, context.username, board.key);
-  const text = `${shareText(board.puzzle, before.taps, board.isToday ? me.streak : 0)}\n\n^(played with Lumen, the daily light puzzle)`;
+  const text = `${shareText(board.puzzle, before.taps, board.isToday ? me.streak : 0, before.hints ?? 0)}\n\n^(played with Lumen, the daily light puzzle)`;
   try {
     // Posted as the player, only when they press Share.
     await reddit.submitComment({ id: postId, text, runAs: 'USER' });
@@ -60,6 +62,18 @@ api.post('/share', async (c) => {
     await reddit.submitComment({ id: postId, text: `u/${context.username} ${text}` });
   }
   return c.json<ShareResponse>({ type: 'share', ok: true });
+});
+
+// Result screen: join the subreddit so tomorrow's puzzle shows up in the player's feed.
+api.post('/join', async (c) => {
+  if (!context.userId) return c.json<JoinResponse>({ type: 'join', ok: false });
+  try {
+    await reddit.subscribeToCurrentSubreddit();
+    return c.json<JoinResponse>({ type: 'join', ok: true });
+  } catch (error) {
+    console.error(`join: ${error}`);
+    return c.json<JoinResponse>({ type: 'join', ok: false });
+  }
 });
 
 api.get('/leaderboard', async (c) => {

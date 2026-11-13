@@ -77,3 +77,20 @@ test('community puzzles: validation, scramble and round trip', () => {
   assert.equal(buildCustom(5, design.replace('\\o', '.o'), 'x').ok, false, 'unsolved design rejected');
   assert.equal(buildCustom(9, design, 'x').ok, false);
 });
+
+test('hintMirror points at a mirror that leads to a solution', async () => {
+  const { hintMirror } = await import('./lumen.ts');
+  for (let d = 0; d < 20; d++) {
+    const day = new Date(Date.UTC(2026, 10, 13 + d)).toISOString().slice(0, 10);
+    const p = generate(day);
+    let cells = p.cells;
+    // following hints one by one must end in a solved board within par taps
+    for (let k = 0; k < p.par; k++) {
+      const i = hintMirror(p.size, cells);
+      assert.notEqual(i, null);
+      cells = applyTaps(cells, [i!]);
+    }
+    assert.ok(trace(p.size, cells).solved, `hints solve ${day}`);
+    assert.equal(hintMirror(p.size, cells), null);
+  }
+});

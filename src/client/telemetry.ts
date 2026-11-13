@@ -33,7 +33,7 @@ export function solved(taps: number) {
   safe(telemetry.endJourney({ complete: true, game: { win: true, score: taps } }));
 }
 
-export function interaction(action: 'share' | 'leaderboard' | 'help') {
+export function interaction(action: 'share' | 'leaderboard' | 'help' | 'hint' | 'join') {
   if (OFFLINE) return;
   safe(telemetry.interaction({ action }));
 }

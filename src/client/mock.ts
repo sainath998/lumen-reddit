@@ -5,6 +5,7 @@
 import type {
   CreateRequest,
   CreateResponse,
+  JoinResponse,
   LeaderboardResponse,
   Me,
   ShareResponse,
@@ -16,7 +17,7 @@ import type {
 import { buildCustom, generate, todayId, verify } from '../shared/lumen';
 
 const KEY = 'lumen.local.v1';
-type Store = { solves: Record<string, { taps: number[]; count: number; ms: number; shared: boolean }>; streak: number; best: number; last: string | null };
+type Store = { solves: Record<string, { taps: number[]; count: number; ms: number; shared: boolean; hints?: number }>; streak: number; best: number; last: string | null };
 
 function load(): Store {
   try {
@@ -64,7 +65,7 @@ function me(s: Store, day: string): Me {
     streak: s.streak,
     bestStreak: s.best,
     totalSolved: Object.keys(s.solves).length,
-    today: t ? { solved: true, taps: t.count, ms: t.ms, shared: t.shared, tapList: t.taps } : null,
+    today: t ? { solved: true, taps: t.count, ms: t.ms, shared: t.shared, tapList: t.taps, ...(t.hints ? { hints: t.hints } : {}) } : null,
   };
 }
 
@@ -78,7 +79,7 @@ export async function state(): Promise<StateResponse> {
   const mine = s.solves[day]?.count ?? null;
   const next = new Date();
   next.setUTCHours(24, 0, 0, 0);
-  return { type: 'state', puzzle, isToday: day === todayId(), me: me(s, day), stats: stats(puzzle.par, mine), nextPuzzleAt: next.getTime() };
+  return { type: 'state', puzzle, isToday: day === todayId(), me: me(s, day), stats: stats(puzzle.par, mine), nextPuzzleAt: next.getTime(), subreddit: 'LumenDaily' };
 }
 
 export async function solve(body: SolveRequest): Promise<SolveResponse> {
@@ -89,7 +90,7 @@ export async function solve(body: SolveRequest): Promise<SolveResponse> {
   const s = load();
   if (!v.solved) return { type: 'solve', ok: false, message: 'Not solved yet', me: me(s, day), stats: stats(puzzle.par, null) };
   if (!s.solves[day]) {
-    s.solves[day] = { taps: body.taps, count: v.taps, ms: body.ms, shared: false };
+    s.solves[day] = { taps: body.taps, count: v.taps, ms: body.ms, shared: false, ...(body.hints ? { hints: body.hints } : {}) };
     if (day === todayId()) {
       const y = new Date(day + 'T00:00:00Z');
       y.setUTCDate(y.getUTCDate() - 1);
@@ -133,4 +134,9 @@ export async function create(body: CreateRequest): Promise<CreateResponse> {
   const built = buildCustom(body.size, body.design, String(Date.now()), 1);
   if (!built.ok) return { type: 'create', ok: false, message: built.reason };
   return { type: 'create', ok: true, par: built.puzzle.par };
+}
+
+export async function join(): Promise<JoinResponse> {
+  await wait(200);
+  return { type: 'join', ok: true };
 }

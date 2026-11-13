@@ -393,11 +393,45 @@ export function verify(p: Puzzle, taps: number[]): { solved: boolean; taps: numb
 }
 
 /** Compact emoji summary for sharing in comments. */
-export function shareText(p: Puzzle, taps: number, streak: number): string {
+export function shareText(p: Puzzle, taps: number, streak: number, hints = 0): string {
   const diff = taps - p.par;
   const stars = diff <= 0 ? '🌟🌟🌟' : diff <= 2 ? '🌟🌟' : '🌟';
   const label = diff <= 0 ? (diff < 0 ? 'under par!' : 'on par') : `par +${diff}`;
-  return `Lumen #${p.number} ${stars} ${taps} taps (${label})${streak > 1 ? ` · 🔥${streak}` : ''}`;
+  return `Lumen #${p.number} ${stars} ${taps} taps (${label})${hints ? ` · 💡${hints}` : ''}${streak > 1 ? ` · 🔥${streak}` : ''}`;
+}
+
+/**
+ * Hint: find the solved arrangement closest to the current board (fewest
+ * mirrors to change) and return one mirror that still has to flip. Prefers a
+ * mirror the beam already touches, so the hint visibly moves the light.
+ */
+export function hintMirror(size: number, cells: Cell[]): number | null {
+  const movable = cells.map((c, i) => (c.t === 'mirror' && !c.locked ? i : -1)).filter((i) => i >= 0);
+  const n = movable.length;
+  if (n > 16 || trace(size, cells).solved) return null;
+  const work = cells.map((c) => ({ ...c })) as Cell[];
+  const original = movable.map((i) => (cells[i] as { s: Slant }).s);
+  let best = -1;
+  let bestFlips = Infinity;
+  for (let mask = 1; mask < 1 << n; mask++) {
+    const flips = popcount(mask);
+    if (flips >= bestFlips) continue;
+    for (let b = 0; b < n; b++) {
+      const s = original[b]!;
+      (work[movable[b]!] as { s: Slant }).s = mask & (1 << b) ? (s === '/' ? '\\' : '/') : s;
+    }
+    if (trace(size, work).solved) {
+      best = mask;
+      bestFlips = flips;
+    }
+  }
+  if (best < 0) return null;
+  const todo = movable.filter((_, b) => best & (1 << b));
+  const hit = new Set<number>();
+  for (const seg of trace(size, cells).segments) {
+    if (Number.isInteger(seg.x2) && Number.isInteger(seg.y2)) hit.add(seg.y2 * size + seg.x2);
+  }
+  return todo.find((i) => hit.has(i)) ?? todo[0] ?? null;
 }
 
 // ---------------------------------------------------------------------------

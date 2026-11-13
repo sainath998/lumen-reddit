@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { Board } from './Board';
 import { Create } from './Create';
 import { api, isLocal } from './api';
-import { applyTaps, shareText, trace, type Cell, type Puzzle } from '../shared/lumen';
+import { applyTaps, hintMirror, shareText, trace, type Cell, type Puzzle } from '../shared/lumen';
 import type { LeaderRow, Me, StateResponse, Stats } from '../shared/api';
 import { appReady, firstMove, interaction, progress, track } from './telemetry';
 
@@ -61,6 +61,8 @@ export const App = () => {
   const [showHelp, setShowHelp] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [hint, setHint] = useState(!seenHint());
+  const [hints, setHints] = useState(0);
+  const [hintTarget, setHintTarget] = useState<number | null>(null);
   const startedAt = useRef<number | null>(null);
   const submitted = useRef(false);
 
@@ -111,6 +113,7 @@ export const App = () => {
         setHint(false);
         markHint();
       }
+      setHintTarget(null);
       const current = applyTaps(puzzle.cells, taps);
       const c = current[i];
       const base = c && c.t === 'mirror' && c.s === '/' ? 1 : 0;
@@ -125,6 +128,19 @@ export const App = () => {
     [puzzle, taps, solved, hint]
   );
 
+  const askHint = () => {
+    if (!puzzle || solved) return;
+    if (hint) {
+      setHint(false);
+      markHint();
+    }
+    const i = hintMirror(puzzle.size, cells);
+    if (i === null) return;
+    setHintTarget(i);
+    setHints((h) => h + 1);
+    interaction('hint');
+  };
+
   // submit once when solved
   useEffect(() => {
     if (!solved || submitted.current || !puzzle) return;
@@ -132,14 +148,14 @@ export const App = () => {
     const ms = startedAt.current === null ? 0 : Math.round(performance.now() - startedAt.current);
     track('solve', { puzzle: puzzle.number, taps: taps.length, par: puzzle.par });
     api
-      .solve({ taps, ms })
+      .solve({ taps, ms, ...(hints ? { hints } : {}) })
       .then((r) => {
         setMe(r.me);
         setStats(r.stats);
         setTimeout(() => setShowResult(true), 900);
       })
       .catch(() => setTimeout(() => setShowResult(true), 900));
-  }, [solved, puzzle, taps]);
+  }, [solved, puzzle, taps, hints]);
 
   if (error) return <div className="screen center"><p className="muted">Couldn’t load today’s puzzle. Pull to refresh.</p></div>;
   if (!data || !puzzle || !beam) return <div className="screen center"><div className="loader" /></div>;
@@ -165,12 +181,14 @@ export const App = () => {
       </header>
 
       <main className="stage">
-        <Board size={puzzle.size} cells={cells} beam={beam} turns={turns} onTap={onTap} hintCell={hint ? firstMovable : null} solved={solved} />
+        <Board size={puzzle.size} cells={cells} beam={beam} turns={turns} onTap={onTap} hintCell={hint ? firstMovable : hintTarget} solved={solved} />
         <div className="status">
           {solved ? (
             <span className="win-line">All {crystals} crystals lit ✦</span>
           ) : hint ? (
             <span className="coach">Tap a mirror to flip it and bend the light</span>
+          ) : hintTarget !== null ? (
+            <span className="coach">Flip the glowing mirror</span>
           ) : (
             <span>
               <b>{beam.lit.size}</b> of {crystals} crystals lit
@@ -186,15 +204,31 @@ export const App = () => {
           {me && me.streak > 0 ? ` · 🔥 ${me.streak}` : ''}
         </span>
         <span className="bar-right">
-          <button className="ghost" onClick={() => setShowCreate(true)}>Make one</button>
-          {solved && <button className="ghost" onClick={() => setShowResult(true)}>Results</button>}
+          {solved ? (
+            <button className="ghost" onClick={() => setShowResult(true)}>Results</button>
+          ) : (
+            <button className="ghost" onClick={askHint} aria-label="Show me a mirror to flip">💡 Hint</button>
+          )}
         </span>
       </footer>
 
       {showHelp && <Help onClose={() => setShowHelp(false)} />}
       {showCreate && <Create onClose={() => setShowCreate(false)} />}
       {showResult && me && stats && (
-        <Result puzzle={puzzle} me={me} stats={stats} nextAt={data.nextPuzzleAt} isToday={data.isToday} onClose={() => setShowResult(false)} onShared={(m) => setMe(m)} />
+        <Result
+          puzzle={puzzle}
+          me={me}
+          stats={stats}
+          nextAt={data.nextPuzzleAt}
+          isToday={data.isToday}
+          subreddit={data.subreddit}
+          onClose={() => setShowResult(false)}
+          onShared={(m) => setMe(m)}
+          onMake={() => {
+            setShowResult(false);
+            setShowCreate(true);
+          }}
+        />
       )}
       {isLocal && <div className="local-badge">local preview</div>}
     </div>
@@ -219,7 +253,19 @@ function Help({ onClose }: { onClose: () => void }) {
   );
 }
 
-function Result({ puzzle, me, stats, nextAt, isToday, onClose, onShared }: { puzzle: Puzzle; me: Me; stats: Stats; nextAt: number; isToday: boolean; onClose: () => void; onShared: (m: Me) => void }) {
+type ResultProps = {
+  puzzle: Puzzle;
+  me: Me;
+  stats: Stats;
+  nextAt: number;
+  isToday: boolean;
+  subreddit: string | undefined;
+  onClose: () => void;
+  onShared: (m: Me) => void;
+  onMake: () => void;
+};
+
+function Result({ puzzle, me, stats, nextAt, isToday, subreddit, onClose, onShared, onMake }: ResultProps) {
   const t = me.today;
   const taps = t?.taps ?? 0;
   const delta = taps - puzzle.par;
@@ -227,6 +273,8 @@ function Result({ puzzle, me, stats, nextAt, isToday, onClose, onShared }: { puz
   const [sharing, setSharing] = useState(false);
   const [shared, setShared] = useState(Boolean(t?.shared));
   const [board, setBoard] = useState<LeaderRow[] | null>(null);
+  const [joined, setJoined] = useState<'no' | 'busy' | 'yes' | 'failed'>('no');
+  const usedHints = t?.hints ?? 0;
   // contiguous rows from par to the worst score, so gaps read as zero
   const counts = new Map(Object.entries(stats.distribution).map(([k, v]) => [Number(k), v]));
   const hi = Math.max(puzzle.par, taps, ...counts.keys());
@@ -259,6 +307,7 @@ function Result({ puzzle, me, stats, nextAt, isToday, onClose, onShared }: { puz
         <p className="big">
           <b>{taps}</b> taps <span className="muted">· par {puzzle.par}</span>
         </p>
+        {usedHints > 0 && <p className="muted small">💡 {usedHints} hint{usedHints > 1 ? 's' : ''} used · not ranked on the leaderboard</p>}
         {stats.beat !== undefined && stats.solvers > 1 && (
           <p className="muted">Fewer taps than {Math.round(stats.beat * 100)}% of today’s solvers</p>
         )}
@@ -285,7 +334,7 @@ function Result({ puzzle, me, stats, nextAt, isToday, onClose, onShared }: { puz
           </button>
           <button className="ghost" onClick={() => { interaction('leaderboard'); void api.leaderboard().then((r) => setBoard(r.rows)); }}>Leaderboard</button>
         </div>
-        {shared && <p className="muted small mono">{shareText(puzzle, taps, me.streak)}</p>}
+        {shared && <p className="muted small mono">{shareText(puzzle, taps, me.streak, usedHints)}</p>}
 
         {board && (
           <ol className="leaders">
@@ -296,6 +345,22 @@ function Result({ puzzle, me, stats, nextAt, isToday, onClose, onShared }: { puz
         )}
 
         <p className="muted small next">{isToday ? `Next Lumen in ${countdown}` : 'This is an archive puzzle — it doesn’t count toward your streak.'}</p>
+        <div className="actions secondary">
+          {subreddit && joined !== 'failed' && (
+            <button
+              className="ghost"
+              disabled={joined !== 'no'}
+              onClick={() => {
+                setJoined('busy');
+                interaction('join');
+                api.join().then((r) => setJoined(r.ok ? 'yes' : 'failed')).catch(() => setJoined('failed'));
+              }}
+            >
+              {joined === 'yes' ? `Joined r/${subreddit} ✓` : `Join r/${subreddit} for tomorrow’s puzzle`}
+            </button>
+          )}
+          <button className="ghost" onClick={onMake}>Make your own Lumen</button>
+        </div>
         <button className="link" onClick={onClose}>View board</button>
       </div>
     </div>

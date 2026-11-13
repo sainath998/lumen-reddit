@@ -114,6 +114,7 @@ button { font: inherit; cursor: pointer; }
 .streaks b { display: block; font: 700 20px Inter, sans-serif; font-variant-numeric: tabular-nums; }
 .streaks span { color: var(--muted); font-size: 12px; }
 .actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 4px; }
+.actions.secondary { grid-template-columns: 1fr; margin-top: 10px; }
 .leaders { margin: 0; padding: 0; list-style: none; text-align: left; font-size: 13px; display: grid; gap: 4px; }
 .leaders li { display: flex; justify-content: space-between; padding: 6px 10px; background: var(--panel); border-radius: 8px; }
 .next { margin: 4px 0 0; }
